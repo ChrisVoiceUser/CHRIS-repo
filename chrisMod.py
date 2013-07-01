@@ -25,7 +25,7 @@ def translateTime(time):
     if time[14:15]=='0':
         time_info.append('o '+time[15:16])
     else:
-        time_info.append(time[14:16])
+        time_info.append(' '+time[14:16])
     return time_info[0]+time_info[2]+time_info[1]
     time_info.append(time[14:16])
 
