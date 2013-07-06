@@ -19,11 +19,11 @@ try: #imports all modules
     import chrisMod
     import sys
     import time
-    import string
+    from string import *
     from datetime import datetime
 except: #if user doesn't have the right modules installed, the program gives the user an error
     raise SystemError('In initialize. System failed to load appropriate frameworks')
-speech.say('system initialized successfully. welcome to Chris zero point zero point zero')
+#speech.say('system initialized successfully. welcome to Chris zero point zero point zero')
 #if the program got this far, everything went well. Therefore, a message that
 #everything went well and the version is given
 
@@ -58,6 +58,22 @@ def initializeUserData():
     speech.say('O K , we\'re done')
     ret_info=[name, gender, pronoun] #returns the name, gender, and pronoun of the user in form of list
     return ret_info
+
+def returnElementIndexes(string, element):
+    indexes=[]
+    start_place=0
+    stringCopy=string
+    while element in stringCopy:
+        if start_place>=len(string):
+            return indexes
+        else:
+            stringSearch=string[start_place:]
+            elementIndex=find(stringSearch, element)+start_place
+            start_place=elementIndex+1
+            stringCopy=string[start_place:]
+            indexes.append(elementIndex)
+    return indexes
+                                 
     
 class Listener(object):
     '''
@@ -126,6 +142,7 @@ class User(object):
         
         self.__name=name
         self.__commands=[]
+        self.count=None
 
     def addCom(self, command):
 
@@ -150,7 +167,7 @@ class User(object):
             raise StopIteration
         for command in self.__commands:
             self.count+=1
-            return self.__commands[self.count]
+            return self.__commands[self.count-1]
 
 class Command(object):
     '''
@@ -164,6 +181,7 @@ class Command(object):
         
         self.__commandText=command #private variable which contains the string form of the command
         Command.possible_keyWords=['seconds'] #key words that are found next to variable values
+        self.percentages={}
         #The possible keywords are a public list and
         
     def getCommandText(self):
@@ -211,25 +229,55 @@ class Command(object):
             except ValueError:
                 pass        
         return None
-        
-    def captureVars(self, char_proxim):
+    
+    def captureVars(self):
 
 ##        puts variable values in the data_holder
         
-        for keyword in Command.possible_keyWords:
-            start_index=(string.find(self.__commandText, keyword))-1
-            end_index=start_index+len(keyword)-1
-            if self.intTypeInRange(start_index-char_proxim+1, start_index):
-                data_holder[keyword[0:3]]=int(self.identifyInt(start_index-char_proxim+1, start_index))
-                self.ckey=str(data_holder[keyword[0:3]])
-            elif self.intTypeInRange(end_index, end_index+char_proxim-1):
-                data_holder[keyword[0:3]]=int(self.identifyInt(end_index, end_index+char_proxim-1))
-                self.ckey=str(data_holder[keyword[0:3]])
-            else:
-                return -1
+##        for keyword in Command.possible_keyWords:
+##            start_index=(string.find(self.__commandText, keyword))-1
+##            end_index=start_index+len(keyword)-1
+##            if self.intTypeInRange(start_index-char_proxim+1, start_index):
+##                data_holder[keyword[0:3]]=int(self.identifyInt(start_index-char_proxim+1, start_index))
+##                self.ckey=str(data_holder[keyword[0:3]])
+##            elif self.intTypeInRange(end_index, end_index+char_proxim-1):
+##                data_holder[keyword[0:3]]=int(self.identifyInt(end_index, end_index+char_proxim-1))
+##                self.ckey=str(data_holder[keyword[0:3]])
+##            else:
+##                return -1
+        
+        for each in comDB():
+            self.compareFrequencies(each)
+            DBcommand=self.percentages[self.findLargestPercentage()]
+            DBCommandIndexes=comDB().bracketIndexesOfCommand(DBcommand)
+            for index in DBCommandIndexes:
+                dataHolderKey=comDB().textSegment(DBcommand, index, DBCommandIndexes[index])
+                print DBcommand[index:], index, find(self.__commandText[index:], ' ')+index, self.__commandText[index:find(self.__commandText[index:], ' ')+index] 
+                dataHolderValue=comDB().textSegmemt(self.__commandText, index, (find(self.__commandText[index:], ' ')+index))
+                data_holder[dataHolderKey]=dataHolderValue        
+                        
         #for now, we are assuming that there is only one instance of the keyword
         #in the entire command. Later we (or I) should change this.
 
+    def compareFrequencies(self, command):
+        numCorrect=0
+        outOfAll=len(command)
+        for i in range(0, len(command)-1):
+            try:
+                if command[i]==self.__commandText[i]:
+                    numCorrect+=1
+            except:
+                break
+        percentCorrect=(numCorrect/float(outOfAll))*100
+        self.percentages[percentCorrect]=command
+
+    def findLargestPercentage(self):
+        largest=None
+        for percentage in self.percentages:
+            if percentage>=largest:
+                largest=percentage
+        return largest
+    
     def removeText(self):
 
 ##        removes variable value from string so we can match the string to a string in the database (look under comDB)
@@ -257,14 +305,54 @@ class comDB(object):
         
         self.__comLibrary={
             'What time is it' : chrisMod.checkTime(),
-            'Shutdown in seconds' : chrisMod.shutdown(data_holder.get('sec')),
-            'Shut down in seconds' : chrisMod.shutdown(data_holder.get('sec')),
-            'Done' : chrisMod.returnFalse(),
-            'Dawn': chrisMod.returnFalse()
+            'Shutdown in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
+            'Shut down in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
         }
+        self.count=None
 
     def getComLibrary(self):
 
 ##        returns the command dictionary
         
         return self.__comLibrary
+
+    def findOpenAngleBrackets(self, command):
+        return returnElementIndexes(command, '<')
+
+    def findClosedAngleBrackets(self, command):
+        return returnElementIndexes(command, '>')
+
+    def createIndexPairs(self, pairs1, pairs2):
+        ret_dict={}
+        for index in range(len(pairs1)):
+            ret_dict[pairs1[index]]=pairs2[index]
+        return ret_dict
+
+    def bracketIndexesOfCommand(self, command):
+        openAngleBrackets=comDB().findOpenAngleBrackets(command)
+        closedAngleBrackets=comDB().findClosedAngleBrackets(command)
+        bracketIndexDict=comDB().createIndexPairs(openAngleBrackets, closedAngleBrackets)
+        return bracketIndexDict
+
+    def textSegment(self, command, start, stop):
+        return command[start : stop]
+
+    def __iter__(self):
+
+##        method for iterating over this class
+
+        
+        self.count=-1
+        return self
+
+    def next(self):
+
+##        This method is internally required by the __iter__ method
+
+        commands=self.__comLibrary.keys()
+        if self.count>=len(commands)-1:
+            raise StopIteration
+        self.count+=1
+        return commands[self.count]
+
+
