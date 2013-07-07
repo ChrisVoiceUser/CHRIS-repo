@@ -107,7 +107,7 @@ class Listener(object):
 ##        asks for command
 
         speech.say('What would you like me to do?')
-        self.__currentCommand=speech.input()
+        self.__currentCommand=speech.input()+'.'
         #the current command is a string once this is executed
 
     def executeCurrentCommand(self):
@@ -251,10 +251,14 @@ class Command(object):
             DBcommand=self.percentages[self.findLargestPercentage()]
             DBCommandIndexes=comDB().bracketIndexesOfCommand(DBcommand)
             for index in DBCommandIndexes:
-                dataHolderKey=comDB().textSegment(DBcommand, index, DBCommandIndexes[index])
-                print DBcommand[index:], index, find(self.__commandText[index:], ' ')+index, self.__commandText[index:find(self.__commandText[index:], ' ')+index] 
-                dataHolderValue=comDB().textSegmemt(self.__commandText, index, (find(self.__commandText[index:], ' ')+index))
-                data_holder[dataHolderKey]=dataHolderValue        
+                dataHolderKey=comDB().textSegment(DBcommand, index, DBCommandIndexes[index]+1)
+                #print DBcommand[index:], index, find(self.__commandText[index:], ' ')+index, self.__commandText[index:find(self.__commandText[index:], ' ')+index] 
+                #dataHolderValue=comDB().textSegmemt(self.__commandText, index, (find(self.__commandText[index:], ' ')+index))
+                endPoint=DBcommand[DBCommandIndexes[index]+1:]
+                endPoint=endPoint[0]
+                print endPoint
+                dataHolderValue=self.__commandText[index:find(self.__commandText[index:], endPoint)+index]
+                data_holder[dataHolderKey]=dataHolderValue
                         
         #for now, we are assuming that there is only one instance of the keyword
         #in the entire command. Later we (or I) should change this.
@@ -307,6 +311,7 @@ class comDB(object):
             'What time is it' : chrisMod.checkTime(),
             'Shutdown in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
             'Shut down in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
+            'play <song>.': chrisMod.play(data_holder.get('<song>'))
         }
         self.count=None
 
