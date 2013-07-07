@@ -11,7 +11,6 @@ interprets, and executes the command through an object-oriented and minimalistic
 '''
 
 data_holder={} #dictionary for storing important values in the command the user gave
-CHAR_PROXIM=2 #global variable for how close a variable value in a user command should be to a keyword
 
 try: #imports all modules
     import speech
@@ -118,12 +117,9 @@ class Listener(object):
             speech.say('yes '+self.__userPronoun) #'yes sir' or 'yes ma'am'
             self.__currentCommand=Command(self.__currentCommand)
             #self.__currentCommand is turned into an Command object (defined later in code)
-            if self.__currentCommand.captureVars(CHAR_PROXIM)==-1:#if the command doesn't have any important variable values such as '(5) seconds'
-                speech.say(self.__currentCommand.interpret(comDB()))#looks up the command in the command data base
-            else: #there are important variable values
-                self.__currentCommand.captureVars(CHAR_PROXIM)#finds the variable values
-                self.__currentCommand.removeText()#strips the command of these values so it can be looked up
-                speech.say(self.__currentCommand.interpret(comDB()))#looks up command
+            self.__currentCommand.captureVars()#finds the variable values
+            self.__currentCommand.removeText()#strips the command of these values so it can be looked up
+            speech.say(self.__currentCommand.interpret(comDB()))#looks up command
         except: #there may be an error in the rest of the code or the user didn't annunciate well in this case
             speech.say('i\'m sorry. I was not able to do that')
                        
@@ -245,20 +241,26 @@ class Command(object):
 ##                self.ckey=str(data_holder[keyword[0:3]])
 ##            else:
 ##                return -1
+
+        self.__replacementData={}
+        self.__variableValues=[]
         
         for each in comDB():
             self.compareFrequencies(each)
-            DBcommand=self.percentages[self.findLargestPercentage()]
-            DBCommandIndexes=comDB().bracketIndexesOfCommand(DBcommand)
-            for index in DBCommandIndexes:
-                dataHolderKey=comDB().textSegment(DBcommand, index, DBCommandIndexes[index]+1)
-                #print DBcommand[index:], index, find(self.__commandText[index:], ' ')+index, self.__commandText[index:find(self.__commandText[index:], ' ')+index] 
-                #dataHolderValue=comDB().textSegmemt(self.__commandText, index, (find(self.__commandText[index:], ' ')+index))
-                endPoint=DBcommand[DBCommandIndexes[index]+1:]
-                endPoint=endPoint[0]
-                print endPoint
-                dataHolderValue=self.__commandText[index:find(self.__commandText[index:], endPoint)+index]
-                data_holder[dataHolderKey]=dataHolderValue
+        DBcommand=self.percentages[self.findLargestPercentage()]
+        DBCommandIndexes=comDB().bracketIndexesOfCommand(DBcommand)
+        for index in DBCommandIndexes:
+            dataHolderKey=comDB().textSegment(DBcommand, index, DBCommandIndexes[index]+1)
+            self.__variableValues.append(dataHolderKey)
+            #print DBcommand[index:], index, find(self.__commandText[index:], ' ')+index, self.__commandText[index:find(self.__commandText[index:], ' ')+index] 
+            #dataHolderValue=comDB().textSegmemt(self.__commandText, index, (find(self.__commandText[index:], ' ')+index))
+            endPoint=DBcommand[DBCommandIndexes[index]+1:]
+            endPoint=endPoint[0]
+            #print endPoint
+            dataHolderValue=self.__commandText[index:find(self.__commandText[index:], endPoint)+index]
+            data_holder[dataHolderKey]=dataHolderValue
+            self.__replacementData[index]=find(self.__commandText[index:], endPoint)+index
+                
                         
         #for now, we are assuming that there is only one instance of the keyword
         #in the entire command. Later we (or I) should change this.
@@ -285,10 +287,13 @@ class Command(object):
     def removeText(self):
 
 ##        removes variable value from string so we can match the string to a string in the database (look under comDB)
-        
-        first_part=self.__commandText[:string.find(self.__commandText, self.ckey)-1]
-        last_part=self.__commandText[string.find(self.__commandText, self.ckey)+1:]
-        self.__commandText=first_part+last_part
+
+        varVal=0
+        for index in self.__replacementData:
+            first_part=self.__commandText[:index]
+            last_part=self.__commandText[self.__replacementData[index]:]
+            self.__commandText=first_part+self.__variableValues[varVal]+last_part
+            varVal+=1            
 
     def interpret(self, commandLibrary):
 
@@ -308,9 +313,9 @@ class comDB(object):
 ##        initializes the data base. database is represented as dictionary. functions correspond the command
         
         self.__comLibrary={
-            'What time is it' : chrisMod.checkTime(),
-            'Shutdown in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
-            'Shut down in <seconds> seconds' : chrisMod.shutdown(data_holder.get('<seconds>')),
+            'What time is it.' : chrisMod.checkTime(),
+            'Shutdown in <seconds> seconds.' : chrisMod.shutdown(data_holder.get('<seconds>')),
+            'Shut down in <seconds> seconds.' : chrisMod.shutdown(data_holder.get('<seconds>')),
             'play <song>.': chrisMod.play(data_holder.get('<song>'))
         }
         self.count=None
